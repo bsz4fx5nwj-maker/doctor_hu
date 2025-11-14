@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>穴位定位挑战</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .score {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .question-container {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: inline-block;
+            min-width: 300px;
+        }
+        .question {
+            font-size: 18px;
+            margin: 0;
+        }
+        .countdown {
+            color: #dc3545;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        .image-container {
+            position: relative;
+            display: inline-block; /* 图片容器自适应原始尺寸 */
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .image-container img {
+            width: auto; /* 关闭自动缩放，保持原始尺寸 */
+            height: auto;
+            display: block;
+        }
+        .image-error {
+            color: #dc3545;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .info {
+            margin: 20px auto;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            text-align: left;
+            line-height: 1.6;
+            min-height: 80px;
+            max-width: 800px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .feedback {
+            position: absolute;
+            padding: 8px 16px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            z-index: 20;
+            display: none;
+            animation: fadeIn 0.3s, float 0.5s ease-in-out, fadeOut 0.3s 1.7s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
+        .correct-feedback {
+            background-color: rgba(40, 167, 69, 0.9);
+        }
+        .wrong-feedback {
+            background-color: rgba(220, 53, 69, 0.9);
+        }
+        .area-markers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none !important;
+            z-index: 10;
+        }
+        .area-marker {
+            position: absolute;
+            background-color: rgba(0, 123, 255, 0.2);
+            border: 1px solid rgba(0, 123, 255, 0.5);
+        }
+        .area-marker:hover {
+            background-color: rgba(0, 123, 255, 0.3);
+            cursor: pointer;
+        }
+        .target-marker {
+            background-color: rgba(255, 193, 7, 0.3);
+            border: 2px solid rgba(255, 193, 7, 0.9);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
+        .complete-message {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #d4edda;
+            color: #155724;
+            border-radius: 8px;
+            font-size: 18px;
+            max-width: 800px;
+            animation: fadeIn 0.5s;
+        }
+        .progress {
+            margin: 10px 0;
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <h1>穴位定位挑战</h1>
+    <div class="score">当前分数：<span id="score">0</span>/100分</div>
+    <div class="question-container">
+        <div class="question" id="question">请点击【穴位名称】的位置</div>
+        <div class="countdown">剩余时间：<span id="countdown">30</span>秒</div>
+        <div class="progress">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+    </div>
+    <div class="image-container" id="image-container">
+        <!-- 正面图片及映射（保持原始尺寸） -->
+        <img id="front-img" src="front.png" alt="人体正面穴位图" usemap="#front-map" style="display: none;">
+        <map name="front-map" id="front-map">
+            <!-- 题库内正面穴位（coords基于原始图片像素） -->
+            <area shape="rect" coords="218, 647, 321, 689" alt="膻中穴" data-name="膻中穴">
+            <area shape="rect" coords="210, 878, 330, 924" alt="天枢穴" data-name="天枢穴">
+            <area shape="rect" coords="201, 1581, 370, 1633" alt="三阴交穴" data-name="三阴交穴">
+            <area shape="rect" coords="204, 947, 331, 990" alt="内关穴" data-name="内关穴">
+            <area shape="rect" coords="170, 1052, 293, 1102" alt="劳宫穴" data-name="劳宫穴">
+            <area shape="rect" coords="893, 365, 1027, 415" alt="太阳穴" data-name="太阳穴">
+            <area shape="rect" coords="900, 450, 1027, 499" alt="迎香穴" data-name="迎香穴">
+            <area shape="rect" coords="903, 530, 1026, 575" alt="天突穴" data-name="天突穴">
+            <area shape="rect" coords="897, 756, 1028, 806" alt="中院穴" data-name="中院穴">
+            <area shape="rect" coords="899, 834, 1027, 878" alt="曲池穴" data-name="曲池穴">
+            <area shape="rect" coords="982, 888, 1111, 945" alt="神阙穴" data-name="神阙穴">
+            <area shape="rect" coords="984, 973, 1108, 1015" alt="气海穴" data-name="气海穴">
+            <area shape="rect" coords="898, 1418, 1059, 1467" alt="足三里穴" data-name="足三里穴">
+            
+            <!-- 非题库正面穴位 -->
+            <area shape="rect" coords="213, 225, 325, 269" alt="百会穴" data-name="百会穴">
+            <area shape="rect" coords="216, 306, 322, 347" alt="四白穴" data-name="四白穴">
+            <area shape="rect" coords="214, 411, 324, 448" alt="水沟穴" data-name="水沟穴">
+            <area shape="rect" coords="213, 487, 321, 530" alt="扶突穴" data-name="扶突穴">
+            <area shape="rect" coords="215, 562, 324, 606" alt="中府穴" data-name="中府穴">
+            <area shape="rect" coords="208, 714, 328, 756" alt="鸠尾穴" data-name="鸠尾穴">
+            <area shape="rect" coords="210, 795, 330, 838" alt="章门穴" data-name="章门穴">
+            <area shape="rect" coords="208, 1149, 333, 1199" alt="中极穴" data-name="中极穴">
+            <area shape="rect" coords="203, 1253, 333, 1300" alt="血海穴" data-name="血海穴">
+            <area shape="rect" coords="201, 1465, 329, 1517" alt="丰隆穴" data-name="丰隆穴">
+            <area shape="rect" coords="905, 202, 1024, 259" alt="头维穴" data-name="头维穴">
+            <area shape="rect" coords="897, 274, 1026, 325" alt="攒竹穴" data-name="攒竹穴">
+            <area shape="rect" coords="902, 606, 1030, 657" alt="期门穴" data-name="期门穴">
+            <area shape="rect" coords="908, 676, 1035, 724" alt="不容穴" data-name="不容穴">
+            <area shape="rect" coords="984, 1047, 1110, 1088" alt="关元穴" data-name="关元穴">
+            <area shape="rect" coords="899, 1158, 1025, 1207" alt="神门穴" data-name="神门穴">
+            <area shape="rect" coords="901, 1301, 1062, 1355" alt="阴陵泉穴" data-name="阴陵泉穴">
+            <area shape="rect" coords="899, 1612, 1023, 1650" alt="太冲穴" data-name="太冲穴">
+            <area shape="rect" coords="904, 1705, 1060, 1746" alt="足临泣穴" data-name="足临泣穴">
+        </map>
+
+        <!-- 背面图片及映射（保持原始尺寸） -->
+        <img id="back-img" src="back.png" alt="人体背面穴位图" usemap="#back-map" style="display: none;">
+        <map name="back-map" id="back-map">
+            <!-- 题库内背面穴位（coords基于原始图片像素） -->
+            <area shape="rect" coords="288, 377, 393, 426" alt="肩井穴" data-name="肩井穴">
+            <area shape="rect" coords="290, 545, 392, 586" alt="心俞穴" data-name="心俞穴">
+            <area shape="rect" coords="285, 709, 393, 758" alt="胃俞穴" data-name="胃俞穴">
+            <area shape="rect" coords="270, 893, 374, 941" alt="合谷穴" data-name="合谷穴">
+            <area shape="rect" coords="285, 1262, 392, 1318" alt="委中穴" data-name="委中穴">
+            <area shape="rect" coords="276, 1659, 377, 1704" alt="涌泉穴" data-name="涌泉穴">
+            <area shape="rect" coords="864, 245, 972, 298" alt="百会穴" data-name="百会穴">
+            <area shape="rect" coords="870, 332, 967, 378" alt="风池穴" data-name="风池穴">
+            <area shape="rect" coords="868, 430, 973, 474" alt="大椎穴" data-name="大椎穴">
+            <area shape="rect" coords="866, 505, 972, 550" alt="肺俞穴" data-name="肺俞穴">
+            <area shape="rect" coords="871, 759, 969, 804" alt="脾俞穴" data-name="脾俞穴">
+            <area shape="rect" coords="863, 827, 972, 873" alt="肾俞穴" data-name="肾俞穴">
+            
+            <!-- 非题库背面穴位 -->
+            <area shape="rect" coords="288, 292, 392, 344" alt="天柱穴" data-name="天柱穴">
+            <area shape="rect" coords="286, 462, 393, 507" alt="风门穴" data-name="风门穴">
+            <area shape="rect" coords="288, 629, 393, 674" alt="肝俞穴" data-name="肝俞穴">
+            <area shape="rect" coords="254, 795, 393, 844" alt="手三里穴" data-name="手三里穴">
+            <area shape="rect" coords="268, 1013, 374, 1061" alt="腰痛点" data-name="腰痛点">
+            <area shape="rect" coords="269, 1106, 375, 1152" alt="中冲穴" data-name="中冲穴">
+            <area shape="rect" coords="864, 573, 972, 614" alt="身柱穴" data-name="身柱穴">
+            <area shape="rect" coords="862, 631, 972, 676" alt="隔俞穴" data-name="隔俞穴">
+            <area shape="rect" coords="869, 695, 972, 742" alt="胆俞穴" data-name="胆俞穴">
+            <area shape="rect" coords="961, 979, 1062, 1030" alt="中渚穴" data-name="中渚穴">
+            <area shape="rect" coords="870, 1121, 972, 1169" alt="环跳穴" data-name="环跳穴">
+            <area shape="rect" coords="795, 1332, 932, 1375" alt="三阴交穴" data-name="三阴交穴">
+            <area shape="rect" coords="1065, 1377, 1167, 1418" alt="太溪穴" data-name="太溪穴">
+            <area shape="rect" coords="1065, 1578, 1167, 1626" alt="照海穴" data-name="照海穴">
+            <area shape="rect" coords="810, 1709, 1184, 1753" alt="太溪穴、照海穴、三阴交穴" data-name="太溪穴、照海穴、三阴交穴">
+        </map>
+
+        <div class="image-error" id="image-error" style="display: none;">
+            ⚠️ 图片加载失败，请检查图片文件是否存在或路径是否正确
+        </div>
+        <!-- 点击反馈提示 -->
+        <div class="feedback correct-feedback" id="correct-feedback">正确!</div>
+        <div class="feedback wrong-feedback" id="wrong-feedback">错误!</div>
+        
+        <!-- 选区标记容器 -->
+        <div class="area-markers"></div>
+    </div>
+    <div class="info" id="info">请答题后查看穴位详情</div>
+    <div class="complete-message" id="complete-message" style="display: none;"></div>
+    <button id="next-question">下一题</button>
+
+    <script>
+        // 题库穴位数据
+        const acupoints = [
+            // 正面穴位（13个）
+            {
+                name: "膻中穴",
+                img: "front",
+                detail: "【膻中穴】<br>位置：两乳头连线中点，胸骨中线上。<br>功效：宽胸理气，活血通络。<br>主治：胸闷、胸痛、咳嗽、乳汁少等。"
+            },
+            {
+                name: "天枢穴",
+                img: "front",
+                detail: "【天枢穴】<br>位置：脐中旁开2寸。<br>功效：调理肠胃，理气行滞。<br>主治：腹痛、腹胀、便秘、腹泻等。"
+            },
+            {
+                name: "三阴交穴",
+                img: "front",
+                detail: "【三阴交穴】<br>位置：内踝尖上3寸，胫骨内侧缘后际。<br>功效：健脾益肾，疏肝理气。<br>主治：月经不调、痛经、失眠、水肿等。"
+            },
+            {
+                name: "内关穴",
+                img: "front",
+                detail: "【内关穴】<br>位置：腕横纹上2寸，掌长肌腱与桡侧腕屈肌腱之间。<br>功效：宁心安神，理气止痛。<br>主治：心悸、胸痛、胃痛、失眠等。"
+            },
+            {
+                name: "劳宫穴",
+                img: "front",
+                detail: "【劳宫穴】<br>位置：手掌心，第2、3掌骨之间偏于第3掌骨。<br>功效：清心泻火，开窍醒神。<br>主治：口疮、口臭、心痛、呕吐等。"
+            },
+            {
+                name: "太阳穴",
+                img: "front",
+                detail: "【太阳穴】<br>位置：眉梢与目外眦之间，向后约1横指的凹陷处。<br>功效：疏风清热，通络止痛。<br>主治：头痛、目疾、面瘫等。"
+            },
+            {
+                name: "迎香穴",
+                img: "front",
+                detail: "【迎香穴】<br>位置：鼻翼外缘中点旁，鼻唇沟中。<br>功效：通利鼻窍，疏风解表。<br>主治：鼻塞、鼽衄、口歪、面痒等。"
+            },
+            {
+                name: "天突穴",
+                img: "front",
+                detail: "【天突穴】<br>位置：胸骨上窝中央。<br>功效：宽胸理气，降痰宣肺。<br>主治：咳嗽、哮喘、胸痛、咽喉肿痛等。"
+            },
+            {
+                name: "中院穴",
+                img: "front",
+                detail: "【中院穴】<br>位置：脐中上4寸，前正中线上。<br>功效：健脾和胃，消食导滞。<br>主治：胃痛、腹胀、呕吐、消化不良等。"
+            },
+            {
+                name: "曲池穴",
+                img: "front",
+                detail: "【曲池穴】<br>位置：肘横纹外侧端，屈肘，尺泽与肱骨外上髁连线中点。<br>功效：清热解表，疏经通络。<br>主治：发热、咽喉肿痛、手臂肿痛等。"
+            },
+            {
+                name: "神阙穴",
+                img: "front",
+                detail: "【神阙穴】<br>位置：脐窝中央。<br>功效：温阳救逆，利水固脱。<br>主治：腹痛、腹泻、脱肛、水肿等。"
+            },
+            {
+                name: "气海穴",
+                img: "front",
+                detail: "【气海穴】<br>位置：脐中下1.5寸，前正中线上。<br>功效：益气助阳，调经固经。<br>主治：腹痛、腹泻、阳痿、月经不调等。"
+            },
+            {
+                name: "足三里穴",
+                img: "front",
+                detail: "【足三里穴】<br>位置：犊鼻下3寸，胫骨前嵴外1横指处。<br>功效：健脾和胃，扶正培元。<br>主治：胃痛、腹泻、便秘、虚劳羸瘦等。"
+            },
+
+            // 背面穴位（12个）
+            {
+                name: "肩井穴",
+                img: "back",
+                detail: "【肩井穴】<br>位置：第7颈椎棘突与肩峰连线的中点。<br>功效：祛风清热，活络消肿。<br>主治：肩背痛、颈项强痛、乳汁不下等。"
+            },
+            {
+                name: "心俞穴",
+                img: "back",
+                detail: "【心俞穴】<br>位置：第5胸椎棘突下，旁开1.5寸。<br>功效：宁心安神，理气止痛。<br>主治：心悸、失眠、胸痛、健忘等。"
+            },
+            {
+                name: "胃俞穴",
+                img: "back",
+                detail: "【胃俞穴】<br>位置：第12胸椎棘突下，旁开1.5寸。<br>功效：和胃健脾，理中降逆。<br>主治：胃痛、腹胀、呕吐、消化不良等。"
+            },
+            {
+                name: "合谷穴",
+                img: "back",
+                detail: "【合谷穴】<br>位置：手背第2掌骨桡侧的中点处。<br>功效：疏风解表，行气活血。<br>主治：头痛、牙痛、发热、闭经等。"
+            },
+            {
+                name: "委中穴",
+                img: "back",
+                detail: "【委中穴】<br>位置：腘横纹中点，股二头肌腱与半腱肌肌腱之间。<br>功效：舒筋活络，清热凉血。<br>主治：腰痛、下肢痿痹、腹痛等。"
+            },
+            {
+                name: "涌泉穴",
+                img: "back",
+                detail: "【涌泉穴】<br>位置：足底第2、3趾蹼缘与足跟连线的前1/3处。<br>功效：滋阴益肾，平肝息风。<br>主治：头痛、失眠、便秘、足心热等。"
+            },
+            {
+                name: "百会穴",
+                img: "back",
+                detail: "【百会穴】<br>位置：头顶正中线与两耳尖连线的交点处。<br>功效：平肝潜阳，升阳举陷。<br>主治：头痛、眩晕、失眠、脱肛、子宫脱垂等。"
+            },
+            {
+                name: "风池穴",
+                img: "back",
+                detail: "【风池穴】<br>位置：枕骨下，胸锁乳突肌与斜方肌之间凹陷中。<br>功效：平肝息风，祛风解毒。<br>主治：头痛、眩晕、失眠、中风等。"
+            },
+            {
+                name: "大椎穴",
+                img: "back",
+                detail: "【大椎穴】<br>位置：后正中线上，第7颈椎棘突下凹陷中。<br>功效：清热解表，截疟止痫。<br>主治：热病、疟疾、咳嗽、项强等。"
+            },
+            {
+                name: "肺俞穴",
+                img: "back",
+                detail: "【肺俞穴】<br>位置：第3胸椎棘突下，旁开1.5寸。<br>功效：养阴润肺，清热补虚。<br>主治：咳嗽、气喘、胸痛、盗汗等。"
+            },
+            {
+                name: "脾俞穴",
+                img: "back",
+                detail: "【脾俞穴】<br>位置：第11胸椎棘突下，旁开1.5寸。<br>功效：健脾和胃，益气升清。<br>主治：腹胀、腹泻、呕吐、水肿等。"
+            },
+            {
+                name: "肾俞穴",
+                img: "back",
+                detail: "【肾俞穴】<br>位置：第2腰椎棘突下，旁开1.5寸。<br>功效：补肾益精，温阳利水。<br>主治：腰痛、遗精、阳痿、月经不调等。"
+            }
+        ];
+
+        // 创建题库穴位名称集合，用于快速判断
+        const acupointNames = new Set(acupoints.map(item => item.name));
+        // 存储已出题的穴位索引
+        let usedIndices = [];
+        let currentAcupoint = null;
+        let score = 0;
+        let isAnswered = false;
+        let isComplete = false;
+        let countdownTimer = null;
+        let countdownSeconds = 30;
+
+        // DOM元素
+        const scoreElement = document.getElementById('score');
+        const questionElement = document.getElementById('question');
+        const countdownElement = document.getElementById('countdown');
+        const progressBar = document.getElementById('progress-bar');
+        const frontImg = document.getElementById('front-img');
+        const backImg = document.getElementById('back-img');
+        const infoElement = document.getElementById('info');
+        const nextButton = document.getElementById('next-question');
+        const imageError = document.getElementById('image-error');
+        const correctFeedback = document.getElementById('correct-feedback');
+        const wrongFeedback = document.getElementById('wrong-feedback');
+        const markersContainer = document.querySelector('.area-markers');
+        const completeMessage = document.getElementById('complete-message');
+
+        // 监听图片加载状态
+        frontImg.addEventListener('error', () => showError(true));
+        backImg.addEventListener('error', () => showError(true));
+        frontImg.addEventListener('load', () => {
+            showError(false);
+            if (currentAcupoint?.img === 'front') createAreaMarkers();
+        });
+        backImg.addEventListener('load', () => {
+            showError(false);
+            if (currentAcupoint?.img === 'back') createAreaMarkers();
+        });
+
+        function showError(show) {
+            imageError.style.display = show ? 'block' : 'none';
+        }
+
+        // 绑定区域点击事件
+        function bindAreaEvents() {
+            // 先移除旧事件，避免重复绑定
+            document.querySelectorAll('area').forEach(area => {
+                const newArea = area.cloneNode(true);
+                area.parentNode.replaceChild(newArea, area);
+            });
+
+            // 重新绑定点击事件
+            document.querySelectorAll('area').forEach(area => {
+                area.addEventListener('click', handleAreaClick);
+                area.addEventListener('mousedown', (e) => {
+                    if (e.button === 0) {
+                        handleAreaClick(e);
+                    }
+                });
+            });
+        }
+
+        // 区域点击处理函数
+        function handleAreaClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (isAnswered || !currentAcupoint || isComplete) return;
+
+            // 清除倒计时
+            clearInterval(countdownTimer);
+            
+            const selectedName = this.dataset.name;
+            const activeImg = currentAcupoint.img === 'front' ? frontImg : backImg;
+            const imgRect = activeImg.getBoundingClientRect();
+
+            // 计算反馈位置（基于原始图片坐标）
+            const feedbackX = e.clientX - imgRect.left + 10;
+            const feedbackY = e.clientY - imgRect.top + 10;
+
+            // 检查是否是额外穴位
+            if (!acupointNames.has(selectedName)) {
+                infoElement.innerHTML = `您点击了额外穴位【${selectedName}】，本题错误`;
+                showFeedback(wrongFeedback, feedbackX, feedbackY);
+                isAnswered = true;
+                nextButton.disabled = false;
+                highlightTargetArea();
+                return;
+            }
+
+            // 判断对错
+            if (selectedName === currentAcupoint.name) {
+                score += 4;
+                scoreElement.textContent = score;
+                infoElement.innerHTML = currentAcupoint.detail;
+                showFeedback(correctFeedback, feedbackX, feedbackY);
+            } else {
+                infoElement.innerHTML = `答错了，正确答案是【${currentAcupoint.name}】`;
+                showFeedback(wrongFeedback, feedbackX, feedbackY);
+            }
+
+            isAnswered = true;
+            nextButton.disabled = false;
+            highlightTargetArea();
+        }
+
+        // 显示反馈提示
+        function showFeedback(feedbackElem, x, y) {
+            feedbackElem.style.left = `${x}px`;
+            feedbackElem.style.top = `${y}px`;
+            feedbackElem.style.display = 'block';
+            setTimeout(() => {
+                feedbackElem.style.display = 'none';
+            }, 2000);
+        }
+
+        // 高亮当前题目的目标选区
+        function highlightTargetArea() {
+            const markers = document.querySelectorAll('.area-marker');
+            markers.forEach(marker => {
+                if (marker.title === currentAcupoint.name) {
+                    marker.classList.add('target-marker');
+                }
+            });
+        }
+
+        // 启动倒计时
+        function startCountdown() {
+            clearInterval(countdownTimer);
+            countdownSeconds = 30;
+            countdownElement.textContent = countdownSeconds;
+            progressBar.style.width = '100%';
+
+            countdownTimer = setInterval(() => {
+                countdownSeconds--;
+                countdownElement.textContent = countdownSeconds;
+                progressBar.style.width = `${(countdownSeconds / 30) * 100}%`;
+                
+                if (countdownSeconds <= 0) {
+                    clearInterval(countdownTimer);
+                    if (!isAnswered) {
+                        handleTimeout();
+                    }
+                }
+            }, 1000);
+        }
+
+        // 超时处理
+        function handleTimeout() {
+            const activeImg = currentAcupoint.img === 'front' ? frontImg : backImg;
+            const imgRect = activeImg.getBoundingClientRect();
+            
+            infoElement.innerHTML = `超时未答题！正确答案是【${currentAcupoint.name}】`;
+            showFeedback(wrongFeedback, imgRect.width / 2, imgRect.height / 2);
+            isAnswered = true;
+            nextButton.disabled = false;
+            highlightTargetArea();
+        }
+
+        // 随机选择未出过的题库穴位
+        function getUnusedAcupoint() {
+            if (usedIndices.length >= acupoints.length) {
+                return null;
+            }
+
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * acupoints.length);
+            } while (usedIndices.includes(randomIndex));
+
+            usedIndices.push(randomIndex);
+            return acupoints[randomIndex];
+        }
+
+        // 加载题目
+        function loadQuestion() {
+            isAnswered = false;
+            correctFeedback.style.display = 'none';
+            wrongFeedback.style.display = 'none';
+            markersContainer.innerHTML = '';
+
+            currentAcupoint = getUnusedAcupoint();
+            
+            if (!currentAcupoint) {
+                isComplete = true;
+                questionElement.textContent = "所有穴位挑战已完成！";
+                frontImg.style.display = 'none';
+                backImg.style.display = 'none';
+                infoElement.textContent = "";
+                nextButton.disabled = true;
+                completeMessage.textContent = `恭喜您完成所有挑战！最终得分：${score}分`;
+                completeMessage.style.display = 'block';
+                clearInterval(countdownTimer);
+                return;
+            }
+
+            completeMessage.style.display = 'none';
+            questionElement.textContent = `请点击【${currentAcupoint.name}】的位置`;
+
+            if (currentAcupoint.img === 'front') {
+                frontImg.style.display = 'block';
+                backImg.style.display = 'none';
+            } else {
+                frontImg.style.display = 'none';
+                backImg.style.display = 'block';
+            }
+
+            infoElement.textContent = "请答题后查看穴位详情";
+            nextButton.disabled = true;
+
+            createAreaMarkers();
+            bindAreaEvents();
+            startCountdown();
+        }
+
+        // 创建选区标记（关闭缩放适配，直接使用原始坐标）
+        function createAreaMarkers() {
+            const activeImg = currentAcupoint.img === 'front' ? frontImg : backImg;
+            
+            if (!activeImg.complete) {
+                setTimeout(createAreaMarkers, 100);
+                return;
+            }
+
+            // 直接使用原始坐标，不做任何缩放计算
+            const mapName = activeImg.useMap.substring(1);
+            const map = document.querySelector(`map[name="${mapName}"]`);
+            
+            map.querySelectorAll('area[shape="rect"]').forEach(area => {
+                const coords = area.coords.split(',').map(Number);
+                const [x1, y1, x2, y2] = coords;
+                
+                const marker = document.createElement('div');
+                marker.className = 'area-marker';
+                // 直接使用原始像素坐标
+                marker.style.left = `${x1}px`;
+                marker.style.top = `${y1}px`;
+                marker.style.width = `${x2 - x1}px`;
+                marker.style.height = `${y2 - y1}px`;
+                marker.title = area.dataset.name;
+                
+                markersContainer.appendChild(marker);
+            });
+        }
+
+        // 绑定下一题按钮事件
+        nextButton.addEventListener('click', loadQuestion);
+
+        // 初始化
+        window.addEventListener('load', () => {
+            loadQuestion();
+        });
+    </script>
+</body>
+</html>
